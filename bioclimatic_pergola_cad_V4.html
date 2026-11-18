@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bioclimatic Aluminum Pergola 3D CAD Visualizer</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Three.js and OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom Scrollbar for Controls UI */
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(59, 130, 246, 0.4);
+      border-radius: 4px;
+    }
+    .glass-panel {
+      background: rgba(11, 19, 36, 0.88);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-panel-light {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(0, 0, 0, 0.12);
+    }
+    .glass-panel-grey {
+      background: rgba(45, 55, 72, 0.90);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .glass-panel-yellow {
+      background: rgba(254, 252, 232, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(234, 179, 8, 0.25);
+    }
+    /* Overlay pointer events */
+    #cad-overlay {
+      pointer-events: none;
+    }
+    input[type=range] {
+      accent-color: #10b981;
+    }
+  </style>
+</head>
+<body class="bg-[#090d16] text-slate-100 h-screen w-screen relative">
+
+  <!-- 3D WebGL Canvas Container -->
+  <div id="canvas-container" class="w-full h-full absolute inset-0"></div>
+
+  <!-- CAD 2D Annotations Overlay -->
+  <svg id="cad-overlay" class="w-full h-full absolute inset-0 z-10"></svg>
+
+  <!-- Top Header / Brand Logo -->
+  <header class="absolute top-4 left-4 z-20 pointer-events-auto">
+    <div class="glass-panel rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-2xl" id="header-brand">
+      <div class="bg-emerald-500 text-slate-950 p-2 rounded-lg flex items-center justify-center font-bold shadow-lg shadow-emerald-500/20">
+        <i class="fa-solid fa-cubes text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold text-white tracking-wide flex items-center gap-2">
+          Bioclimatic Pergola 3D CAD
+          <span class="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded border border-emerald-500/30 font-mono">EN1090 EXC2</span>
+        </h1>
+        <p class="text-[11px] text-slate-400">Structural Aluminum Parametric Modeler</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Left Sidebar Controls Panel -->
+  <aside class="absolute left-4 top-20 bottom-4 w-80 z-20 overflow-y-auto glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-4 pointer-events-auto" id="control-panel">
+    
+    <!-- Viewport Controls -->
+    <div>
+      <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1.5 border-b border-slate-800 pb-1">
+        <i class="fa-solid fa-sliders"></i> Viewport Controls
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button id="btn-rotate-360" class="px-2.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700">
+          <i class="fa-solid fa-rotate text-emerald-400"></i> 360° Rotate
+        </button>
+        <button id="btn-wireframe" class="px-2.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700">
+          <i class="fa-solid fa-vector-square text-emerald-400"></i> Wireframe
+        </button>
+        <button id="btn-dimensions" class="px-2.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+          <i class="fa-solid fa-ruler-combined"></i> Dimensions
+        </button>
+        <button id="btn-theme" class="px-2.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700">
+          <i class="fa-solid fa-moon text-emerald-400" id="theme-icon"></i> <span id="theme-text">Dark Mode</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Section 1: Dimensions -->
+    <div>
+      <div class="flex items-center justify-between mb-2.5 border-b border-slate-800 pb-1.5">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-up-right-and-down-left-from-center text-emerald-400"></i> Pergola Dimensions
+        </h2>
+        <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">ISO 2768</span>
+      </div>
+
+      <!-- Length (Z Axis) Slider -->
+      <div class="mb-3">
+        <div class="flex justify-between text-xs mb-1">
+          <span class="text-slate-300 font-medium">Length (Projection)</span>
+          <span class="font-mono text-emerald-400 font-bold" id="val-length">3.50 m</span>
+        </div>
+        <input type="range" id="slider-length" min="2.0" max="6.0" step="0.1" value="3.5" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+        <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+          <span>2.0m</span>
+          <span>6.0m</span>
+        </div>
+      </div>
+
+      <!-- Width (X Axis) Slider -->
+      <div class="mb-3">
+        <div class="flex justify-between text-xs mb-1">
+          <span class="text-slate-300 font-medium">Width (Span)</span>
+          <span class="font-mono text-emerald-400 font-bold" id="val-width">3.00 m</span>
+        </div>
+        <input type="range" id="slider-width" min="2.0" max="5.0" step="0.1" value="3.0" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+        <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+          <span>2.0m</span>
+          <span>5.0m</span>
+        </div>
+      </div>
+
+      <!-- Post Height (Y Axis) Slider -->
+      <div class="mb-3">
+        <div class="flex justify-between text-xs mb-1">
+          <span class="text-slate-300 font-medium">Clear Height (H)</span>
+          <span class="font-mono text-emerald-400 font-bold" id="val-height">2.30 m</span>
+        </div>
+        <input type="range" id="slider-height" min="2.0" max="3.5" step="0.05" value="2.3" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+        <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+          <span>2.0m</span>
+          <span>3.5m</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Post Specification & Cross-Section Selection -->
+    <div>
+      <div class="flex items-center justify-between mb-2.5 border-b border-slate-800 pb-1.5">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-cube text-emerald-400"></i> Structural Post Profile
+        </h2>
+      </div>
+
+      <!-- Select Post Cross Section Size -->
+      <div class="mb-3">
+        <label class="block text-xs font-medium text-slate-300 mb-1">Outer Cross Section Size</label>
+        <select id="select-post-size" class="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg p-2 text-xs font-mono focus:border-emerald-500 focus:outline-none">
+          <option value="100">100mm x 100mm</option>
+          <option value="120">120mm x 120mm</option>
+          <option value="150" selected>150mm x 150mm (Standard)</option>
+          <option value="200">200mm x 200mm (Heavy Duty)</option>
+        </select>
+      </div>
+
+      <!-- Wall Thickness Slider -->
+      <div class="mb-3">
+        <div class="flex justify-between text-xs mb-1">
+          <span class="text-slate-300 font-medium">Post Wall Thickness (t)</span>
+          <span class="font-mono text-emerald-400 font-bold" id="val-thickness">2.0 mm</span>
+        </div>
+        <input type="range" id="slider-thickness" min="1.5" max="5.0" step="0.1" value="2.0" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+        <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+          <span>1.5mm</span>
+          <span>5.0mm</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Bioclimatic Roof Louver Control -->
+    <div>
+      <div class="flex items-center justify-between mb-2 border-b border-slate-800 pb-1.5">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-fan text-emerald-400"></i> Louver Control
+        </h2>
+        <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-mono">EN13561</span>
+      </div>
+
+      <div class="mb-2">
+        <div class="flex justify-between text-xs mb-1">
+          <span class="text-slate-300 font-medium">Pitch Angle</span>
+          <span class="font-mono text-emerald-400 font-bold" id="val-louver-angle">0° (Closed)</span>
+        </div>
+        <input type="range" id="slider-louver" min="0" max="90" step="1" value="0" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+      </div>
+
+      <div class="grid grid-cols-3 gap-1.5 mt-2">
+        <button id="btn-louver-close" class="py-1 px-2 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded text-[11px] font-mono border border-slate-800">0° Closed</button>
+        <button id="btn-louver-45" class="py-1 px-2 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded text-[11px] font-mono border border-slate-800">45° Shade</button>
+        <button id="btn-louver-open" class="py-1 px-2 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded text-[11px] font-mono border border-slate-800">90° Open</button>
+      </div>
+    </div>
+
+    <!-- Section 4: Material Color Selector -->
+    <div>
+      <div class="flex items-center justify-between mb-2 border-b border-slate-800 pb-1.5">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-palette text-emerald-400"></i> Powder Coat Finish
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-5 gap-2" id="color-options">
+        <button data-color="0xf5f5f5" data-name="Bright White (RAL 9016)" class="color-btn active ring-2 ring-emerald-400 h-8 rounded-lg bg-[#f5f5f5] shadow-md transform transition-transform hover:scale-105" title="Bright White (RAL 9016)"></button>
+        <button data-color="0x373e48" data-name="Anthracite (RAL 7016)" class="color-btn h-8 rounded-lg bg-[#373e48] shadow-md transform transition-transform hover:scale-105" title="Anthracite Grey (RAL 7016)"></button>
+        <button data-color="0xc0c0c0" data-name="Silver (RAL 9006)" class="color-btn h-8 rounded-lg bg-gradient-to-br from-slate-200 to-slate-400 shadow-md transform transition-transform hover:scale-105" title="Silver Anodized (RAL 9006)"></button>
+        <button data-color="0x1a1a1a" data-name="Matte Black (RAL 9005)" class="color-btn h-8 rounded-lg bg-[#1a1a1a] border border-slate-700 shadow-md transform transition-transform hover:scale-105" title="Matte Black (RAL 9005)"></button>
+        <button data-color="0x4a3b32" data-name="Architectural Bronze" class="color-btn h-8 rounded-lg bg-[#4a3b32] shadow-md transform transition-transform hover:scale-105" title="Architectural Bronze"></button>
+      </div>
+      <div class="text-[11px] text-slate-400 mt-1 font-mono text-center" id="color-name-display">Bright White (RAL 9016)</div>
+    </div>
+
+  </aside>
+
+  <!-- Right Top Popup Window - Post Cross-Section Detail -->
+  <aside class="absolute right-4 top-4 w-80 z-20 glass-panel rounded-xl p-3.5 shadow-2xl pointer-events-auto flex flex-col gap-2" id="post-detail-panel">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+        <i class="fa-solid fa-shapes text-emerald-400"></i> Post Cross-Section Detail
+      </h3>
+      <span class="text-[10px] bg-slate-900 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono" id="post-size-badge">150x150mm</span>
+    </div>
+
+    <!-- SVG Dynamic Cross-Section Rendering -->
+    <div class="w-full bg-[#050811] p-3 rounded-lg border border-slate-800 flex flex-col items-center justify-center relative">
+      <svg id="svg-cross-section" viewBox="0 0 200 160" class="w-full h-36">
+        <!-- SVG dynamic render here -->
+      </svg>
+      <div class="w-full flex justify-between items-center text-[10px] text-slate-400 font-mono mt-1 px-1">
+        <span>Alloy EN AW-6063 T5</span>
+        <span class="text-emerald-400 font-semibold" id="cs-thickness-label">t = 2.0mm</span>
+      </div>
+    </div>
+
+    <!-- Parameter summary readout -->
+    <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800 text-xs font-mono">
+      <div>
+        <span class="text-[10px] text-slate-400 block">Outer Width ($D$):</span>
+        <span class="text-emerald-400 font-bold" id="cs-outer-dim">150.0 mm</span>
+      </div>
+      <div>
+        <span class="text-[10px] text-slate-400 block">Wall Thickness ($t$):</span>
+        <span class="text-emerald-400 font-bold" id="cs-wall-dim">2.0 mm</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Bottom Window - Engineering Calculations & UK BS EN1991 Verification -->
+  <aside class="absolute right-4 top-64 bottom-4 w-80 z-20 glass-panel rounded-xl p-3.5 shadow-2xl pointer-events-auto flex flex-col justify-between gap-2 overflow-y-auto" id="hud-panel">
+    <div>
+      <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2.5">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-calculator text-emerald-400"></i> UK BS EN1991 Ix Analysis
+        </h3>
+        <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 font-mono font-bold" id="hud-compliance-badge">COMPLIANT</span>
+      </div>
+
+      <!-- Installation Environment Preset Selector -->
+      <div class="mb-2.5">
+        <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1">UK Region / Installation Terrain</label>
+        <select id="select-uk-terrain" class="w-full bg-slate-900 border border-slate-700 text-emerald-400 rounded-lg p-2 text-xs font-mono focus:border-emerald-500 focus:outline-none">
+          <option value="town" selected>London / Town Terrain (v=22m/s, q=0.50kN/m²)</option>
+          <option value="country">Country Inland (v=25m/s, q=0.65kN/m²)</option>
+          <option value="coastal">Scotland / Coastal (v=28m/s, q=0.90kN/m²)</option>
+        </select>
+      </div>
+
+      <!-- Weight & Mass display -->
+      <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800 font-mono text-xs flex justify-between items-center mb-2">
+        <span class="text-slate-400">Est. Aluminum Mass</span>
+        <span class="text-emerald-400 font-bold text-sm" id="hud-mass font-bold">152.8 kg</span>
+      </div>
+
+      <!-- Structural Analysis Section -->
+      <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800 space-y-2 text-xs">
+        <div class="text-[11px] font-bold text-slate-300 border-b border-slate-800/80 pb-1 flex justify-between">
+          <span>Moment of Inertia ($I_x$):</span>
+          <span class="text-slate-400 font-mono">BS EN 1999</span>
+        </div>
+
+        <div class="flex justify-between items-center">
+          <span class="text-slate-400">Actual $I_x$ ($	ext{cm}^4$):</span>
+          <span class="font-mono text-emerald-400 font-bold text-sm" id="calc-ix-actual">432.9 cm⁴</span>
+        </div>
+
+        <div class="flex justify-between items-center">
+          <span class="text-slate-400">Required $I_{x,	ext{req}}$ Target:</span>
+          <span class="font-mono text-amber-400 font-bold text-xs" id="calc-ix-req">350 - 410 cm⁴</span>
+        </div>
+
+        <div class="flex justify-between items-center border-t border-slate-800/80 pt-1.5">
+          <span class="text-slate-400">Safety Margin Ratio:</span>
+          <span class="font-mono text-emerald-400 font-bold" id="calc-safety-ratio">1.14x (Safe)</span>
+        </div>
+      </div>
+
+      <!-- Compliance parameters breakdown -->
+      <div class="space-y-1 text-xs mt-2">
+        <div class="flex justify-between items-center text-[11px]">
+          <span class="text-slate-400">Wind Pressure ($q_p$):</span>
+          <span class="font-mono text-slate-200" id="hud-qp-val">0.50 kN/m²</span>
+        </div>
+        <div class="flex justify-between items-center text-[11px]">
+          <span class="text-slate-400">Required $W_{x,	ext{req}}$:</span>
+          <span class="font-mono text-slate-200" id="hud-wx-req">≥ 27.5 cm³</span>
+        </div>
+        <div class="flex justify-between items-center text-[11px]">
+          <span class="text-slate-400">Clear Height ($H$):</span>
+          <span class="font-mono text-slate-200" id="hud-clear-height">2300 mm</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mathematical Formula Box -->
+    <div class="pt-2 border-t border-slate-800 text-[10px] text-slate-400 leading-relaxed font-mono">
+      <div class="text-slate-300 font-bold mb-1 flex items-center gap-1">
+        <i class="fa-solid fa-circle-info text-emerald-400"></i> UK Eurocode Calculation:
+      </div>
+      <p class="text-[9.5px] text-slate-400">
+        $I_x = rac{D^4 - d^4}{12}$. Structural targets matched against BS EN 1991-1-4 UK National Annex regional values.
+      </p>
+    </div>
+  </aside>
+
+  <!-- 3D Visualization Script -->
+  <script>
+    // System State & Parameters
+    const state = {
+      length: 3.5,            // Z dimension (meters)
+      width: 3.0,             // X dimension (meters)
+      height: 2.3,            // Y clear height (meters)
+      postProfileSize: 150,   // mm (100, 120, 150, 200)
+      postThickness: 2.0,     // mm (1.5 to 5.0)
+      louverAngle: 0,         // degrees
+      color: 0xf5f5f5,        // Bright white default
+      colorName: 'Bright White (RAL 9016)',
+      wireframe: false,
+      showDimensions: true,
+      themeMode: 'dark',      // 'dark', 'grey', 'yellow', 'light'
+      ukTerrain: 'town',      // 'town', 'country', 'coastal'
+      autoRotate: false
+    };
+
+    // UK Regional Data Calculations (From structural reference table)
+    const ukTerrainData = {
+      town: {
+        name: 'London / Town Terrain',
+        vb: '22 m/s',
+        qp: 0.50,
+        wxReq: '≥ 27.5 cm³',
+        ixReqMin: 350,
+        ixReqMax: 410,
+        displayIx: '350 - 410 cm⁴'
+      },
+      country: {
+        name: 'Country Inland',
+        vb: '25 m/s',
+        qp: 0.65,
+        wxReq: '≥ 35.8 cm³',
+        ixReqMin: 480,
+        ixReqMax: 530,
+        displayIx: '480 - 530 cm⁴'
+      },
+      coastal: {
+        name: 'Scotland / Coastal',
+        vb: '28 m/s',
+        qp: 0.90,
+        wxReq: '≥ 49.5 cm³',
+        ixReqMin: 660,
+        ixReqMax: 750,
+        displayIx: '660 - 750 cm⁴'
+      }
+    };
+
+    // Global Three.js Context
+    let scene, camera, renderer, controls;
+    let pergolaGroup;
+    let materials = {};
+    let dimensionObjects = [];
+
+    // DOM References
+    const container = document.getElementById('canvas-container');
+    const svgOverlay = document.getElementById('cad-overlay');
+
+    // Initialize 3D Application
+    function init() {
+      // 1. Three.js Scene Setup
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x090d16);
+      scene.fog = new THREE.FogExp2(0x090d16, 0.03);
+
+      // 2. Camera Setup
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(5.5, 4.2, 6.5);
+
+      // 3. Renderer Setup
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.25;
+      container.appendChild(renderer.domElement);
+
+      // 4. Orbit Controls Setup
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 - 0.01;
+      controls.minDistance = 2;
+      controls.maxDistance = 20;
+      controls.target.set(0, state.height / 2, 0);
+
+      // Lighting & Environment Setup
+      setupLighting();
+      setupEnvironment();
+
+      // PBR Materials setup
+      initMaterials();
+
+      // Master Container Group
+      pergolaGroup = new THREE.Group();
+      scene.add(pergolaGroup);
+
+      // Render Initial Model
+      rebuildPergola();
+
+      // Set up UI Event Listeners
+      setupUIEventListeners();
+
+      // Window Resize Listener
+      window.addEventListener('resize', onWindowResize);
+
+      // Start Animation Render Loop
+      animate();
+    }
+
+    // Dynamic Lighting
+    function setupLighting() {
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+      scene.add(ambientLight);
+
+      const mainLight = new THREE.DirectionalLight(0xffffff, 1.3);
+      mainLight.position.set(8, 14, 6);
+      mainLight.castShadow = true;
+      mainLight.shadow.mapSize.width = 2048;
+      mainLight.shadow.mapSize.height = 2048;
+      mainLight.shadow.camera.near = 0.5;
+      mainLight.shadow.camera.far = 30;
+      mainLight.shadow.camera.left = -6;
+      mainLight.shadow.camera.right = 6;
+      mainLight.shadow.camera.top = 6;
+      mainLight.shadow.camera.bottom = -6;
+      mainLight.shadow.bias = -0.0005;
+      scene.add(mainLight);
+
+      const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.4);
+      fillLight.position.set(-6, 6, -6);
+      scene.add(fillLight);
+    }
+
+    // Grid Floor
+    let gridHelper, groundPlane;
+    function setupEnvironment() {
+      gridHelper = new THREE.GridHelper(20, 20, 0x10b981, 0x1e293b);
+      gridHelper.position.y = -0.001;
+      scene.add(gridHelper);
+
+      const groundGeo = new THREE.PlaneGeometry(30, 30);
+      const groundMat = new THREE.ShadowMaterial({ opacity: 0.4 });
+      groundPlane = new THREE.Mesh(groundGeo, groundMat);
+      groundPlane.rotation.x = -Math.PI / 2;
+      groundPlane.receiveShadow = true;
+      scene.add(groundPlane);
+    }
+
+    // Initialize Materials (Bright White Default)
+    function initMaterials() {
+      materials.aluminum = new THREE.MeshStandardMaterial({
+        color: state.color,
+        metalness: 0.85,
+        roughness: 0.25,
+        wireframe: state.wireframe,
+        wireframeLineWidth: 1.5
+      });
+
+      materials.cap = new THREE.MeshStandardMaterial({
+        color: 0x111827,
+        metalness: 0.3,
+        roughness: 0.7
+      });
+    }
+
+    function updateMaterialProperties() {
+      materials.aluminum.color.setHex(state.color);
+      materials.aluminum.wireframe = state.wireframe;
+      if (state.wireframe) {
+        materials.aluminum.color.setHex(0x10b981); // Vibrant neon green wireframe line
+      } else {
+        materials.aluminum.color.setHex(state.color);
+      }
+      materials.aluminum.needsUpdate = true;
+    }
+
+    // Main CAD Geometry Rebuild Function
+    function rebuildPergola() {
+      // Clear Existing Objects
+      while (pergolaGroup.children.length > 0) {
+        const obj = pergolaGroup.children[0];
+        if (obj.geometry) obj.geometry.dispose();
+        pergolaGroup.remove(obj);
+      }
+
+      const W = state.width;
+      const L = state.length;
+      const H = state.height;
+      const P = state.postProfileSize / 1000; // Convert mm to meters
+      const t = state.postThickness / 1000;    // Wall thickness in meters
+      const B_H = 0.20;                        // Perimeter Beam height 200mm
+
+      // 1. FOUR CORNER POSTS (Hollow Square Profiles)
+      const postPosX = W / 2 - P / 2;
+      const postPosZ = L / 2 - P / 2;
+
+      const cornerPositions = [
+        [ postPosX,  postPosZ],
+        [-postPosX,  postPosZ],
+        [ postPosX, -postPosZ],
+        [-postPosX, -postPosZ]
+      ];
+
+      const postGeo = createHollowSquareGeometry(P, P, H, t);
+
+      cornerPositions.forEach(pos => {
+        const postMesh = new THREE.Mesh(postGeo, materials.aluminum);
+        postMesh.position.set(pos[0], H / 2, pos[1]);
+        postMesh.castShadow = true;
+        postMesh.receiveShadow = true;
+        pergolaGroup.add(postMesh);
+
+        // Top Cap Plate
+        const capGeo = new THREE.BoxGeometry(P + 0.004, 0.005, P + 0.004);
+        const capMesh = new THREE.Mesh(capGeo, materials.cap);
+        capMesh.position.set(pos[0], H + 0.0025, pos[1]);
+        pergolaGroup.add(capMesh);
+      });
+
+      // 2. OUTER PERIMETER BEAMS
+      const beamY = H + B_H / 2;
+
+      // Front & Back Beams (Width direction)
+      const beamXLength = W;
+      const beamXGeo = new THREE.BoxGeometry(beamXLength, B_H, P);
+      
+      const beamFront = new THREE.Mesh(beamXGeo, materials.aluminum);
+      beamFront.position.set(0, beamY, L / 2 - P / 2);
+      beamFront.castShadow = true;
+      pergolaGroup.add(beamFront);
+
+      const beamBack = new THREE.Mesh(beamXGeo, materials.aluminum);
+      beamBack.position.set(0, beamY, -L / 2 + P / 2);
+      beamBack.castShadow = true;
+      pergolaGroup.add(beamBack);
+
+      // Left & Right Beams (Length direction)
+      const beamZLength = L - 2 * P;
+      const beamZGeo = new THREE.BoxGeometry(P, B_H, beamZLength);
+
+      const beamLeft = new THREE.Mesh(beamZGeo, materials.aluminum);
+      beamLeft.position.set(-W / 2 + P / 2, beamY, 0);
+      beamLeft.castShadow = true;
+      pergolaGroup.add(beamLeft);
+
+      const beamRight = new THREE.Mesh(beamZGeo, materials.aluminum);
+      beamRight.position.set(W / 2 - P / 2, beamY, 0);
+      beamRight.castShadow = true;
+      pergolaGroup.add(beamRight);
+
+      // 3. LOUVERED ROOF BLADES
+      const louverInnerWidth = W - 2 * P;  // Blade total span length
+      const louverInnerLength = L - 2 * P; // Length over which louvers distribute
+
+      const louverBladeWidth = 0.18; // 180mm blade width
+      const louverBladeThickness = 0.025;
+      const numLouvers = Math.floor(louverInnerLength / (louverBladeWidth * 0.88));
+      const louverSpacing = louverInnerLength / numLouvers;
+
+      // Extruded aerofoil blade shape
+      const louverShape = new THREE.Shape();
+      const hw = (louverBladeWidth) / 2;
+      louverShape.moveTo(-hw, 0);
+      louverShape.quadraticCurveTo(0, louverBladeThickness, hw, 0);
+      louverShape.quadraticCurveTo(0, -louverBladeThickness / 2, -hw, 0);
+
+      const extrudeSettings = {
+        depth: louverInnerWidth - 0.006,
+        bevelEnabled: true,
+        bevelSegments: 2,
+        steps: 1,
+        bevelSize: 0.002,
+        bevelThickness: 0.002
+      };
+
+      const louverGeo = new THREE.ExtrudeGeometry(louverShape, extrudeSettings);
+      louverGeo.center();
+
+      const startZ = -louverInnerLength / 2 + louverSpacing / 2;
+
+      for (let i = 0; i < numLouvers; i++) {
+        const louverMesh = new THREE.Mesh(louverGeo, materials.aluminum);
+        const zPos = startZ + i * louverSpacing;
+        
+        louverMesh.position.set(0, H + B_H / 2, zPos);
+        louverMesh.rotation.y = Math.PI / 2;
+        louverMesh.rotation.x = THREE.MathUtils.degToRad(state.louverAngle);
+
+        louverMesh.castShadow = true;
+        louverMesh.receiveShadow = true;
+        pergolaGroup.add(louverMesh);
+      }
+
+      // 4. Trigger Cross-Section SVG & Calculations Updates
+      updateCrossSectionSVG();
+      updateEngineeringCalculations(numLouvers);
+      updateCADOverlay();
+    }
+
+    // Helper: Hollow Square Post Geometry
+    function createHollowSquareGeometry(width, depth, height, wallThickness) {
+      const outerShape = new THREE.Shape();
+      const w = width / 2;
+      const d = depth / 2;
+      outerShape.moveTo(-w, -d);
+      outerShape.lineTo(w, -d);
+      outerShape.lineTo(w, d);
+      outerShape.lineTo(-w, d);
+      outerShape.lineTo(-w, -d);
+
+      const innerShape = new THREE.Path();
+      const iw = w - wallThickness;
+      const id = d - wallThickness;
+      innerShape.moveTo(-iw, -id);
+      innerShape.lineTo(-iw, id);
+      innerShape.lineTo(iw, id);
+      innerShape.lineTo(iw, -id);
+      innerShape.lineTo(-iw, -id);
+
+      outerShape.holes.push(innerShape);
+
+      const extrudeSettings = { depth: height, bevelEnabled: false };
+      const geo = new THREE.ExtrudeGeometry(outerShape, extrudeSettings);
+      geo.rotateX(Math.PI / 2);
+      geo.center();
+      return geo;
+    }
+
+    // Render 2D SVG Cross-Section Detail
+    function updateCrossSectionSVG() {
+      const svg = document.getElementById('svg-cross-section');
+      const D = state.postProfileSize;
+      const t = state.postThickness;
+
+      document.getElementById('post-size-badge').innerText = `${D}x${D}mm`;
+      document.getElementById('cs-thickness-label').innerText = `t = ${t.toFixed(1)}mm`;
+      document.getElementById('cs-outer-dim').innerText = `${D.toFixed(1)} mm`;
+      document.getElementById('cs-wall-dim').innerText = `${t.toFixed(1)} mm`;
+
+      const outerSize = 100;
+      const wallPx = Math.max(3, (t / D) * outerSize);
+      const innerSize = outerSize - 2 * wallPx;
+      const x0 = (200 - outerSize) / 2;
+      const y0 = (140 - outerSize) / 2;
+
+      svg.innerHTML = `
+        <rect x="${x0}" y="${y0}" width="${outerSize}" height="${outerSize}" rx="6" fill="none" stroke="#10b981" stroke-width="2.5" stroke-dasharray="6 3" />
+        <rect x="${x0 + wallPx}" y="${y0 + wallPx}" width="${innerSize}" height="${innerSize}" rx="3" fill="#050811" stroke="#34d399" stroke-width="1.5" />
+        <line x1="${x0}" y1="${y0 - 12}" x2="${x0 + outerSize}" y2="${y0 - 12}" stroke="#64748b" stroke-width="1.2" />
+        <line x1="${x0}" y1="${y0 - 16}" x2="${x0}" y2="${y0 - 8}" stroke="#64748b" stroke-width="1" />
+        <line x1="${x0 + outerSize}" y1="${y0 - 16}" x2="${x0 + outerSize}" y2="${y0 - 8}" stroke="#64748b" stroke-width="1" />
+        <text x="100" y="${y0 - 16}" text-anchor="middle" fill="#10b981" font-size="10" font-family="JetBrains Mono" font-weight="bold">${D} mm</text>
+        <line x1="${x0 + 4}" y1="${y0 + 4}" x2="${x0 + wallPx}" y2="${y0 + wallPx}" stroke="#10b981" stroke-width="1.5" />
+        <text x="${x0 + wallPx + 8}" y="${y0 + wallPx + 12}" fill="#34d399" font-size="9" font-family="JetBrains Mono">t=${t.toFixed(1)}mm</text>
+      `;
+    }
+
+    // Engineering Calculations (Updated to include UK Regional Image Table Selections)
+    function updateEngineeringCalculations(louverCount) {
+      const D_cm = state.postProfileSize / 10;
+      const t_cm = state.postThickness / 10;
+      const d_cm = D_cm - 2 * t_cm;
+
+      // Actual Moment of Inertia Ix = (D^4 - d^4) / 12  [cm^4]
+      const Ix_actual = (Math.pow(D_cm, 4) - Math.pow(d_cm, 4)) / 12;
+
+      // Fetch active UK terrain target values from uploaded table reference
+      const terrain = ukTerrainData[state.ukTerrain];
+      const targetIxMin = terrain.ixReqMin;
+      const targetIxMax = terrain.ixReqMax;
+
+      const safetyRatio = Ix_actual / targetIxMin;
+
+      // Update UI readouts
+      document.getElementById('calc-ix-actual').innerText = `${Ix_actual.toFixed(1)} cm⁴`;
+      document.getElementById('calc-ix-req').innerText = terrain.displayIx;
+      document.getElementById('hud-qp-val').innerText = `${terrain.qp.toFixed(2)} kN/m²`;
+      document.getElementById('hud-wx-req').innerText = terrain.wxReq;
+      document.getElementById('calc-safety-ratio').innerText = `${safetyRatio.toFixed(2)}x (${safetyRatio >= 1.0 ? 'Safe' : 'Unsafe'})`;
+      document.getElementById('hud-clear-height').innerText = `${(state.height * 1000).toFixed(0)} mm`;
+
+      // Mass calculation
+      const density = 2700;
+      const P_m = state.postProfileSize / 1000;
+      const t_m = state.postThickness / 1000;
+      const H_m = state.height;
+      const W_m = state.width;
+      const L_m = state.length;
+
+      const area_post_m2 = (P_m * P_m) - ((P_m - 2*t_m) * (P_m - 2*t_m));
+      const postMass = 4 * area_post_m2 * H_m * density;
+
+      const beamT_m = 0.0025;
+      const area_beam_m2 = (0.20 * P_m) - ((0.20 - 2*beamT_m) * (P_m - 2*beamT_m));
+      const beamMass = (2 * W_m + 2 * (L_m - 2 * P_m)) * area_beam_m2 * density;
+
+      const louverMass = louverCount * (0.18 * 0.0025) * (W_m - 2*P_m) * density;
+      const totalMass = (postMass + beamMass + louverMass).toFixed(1);
+
+      document.getElementById('hud-mass font-bold').innerText = `${totalMass} kg`;
+
+      // Compliance badge styling
+      const complianceBadge = document.getElementById('hud-compliance-badge');
+      if (safetyRatio >= 1.0) {
+        complianceBadge.innerText = 'COMPLIANT (EXC2)';
+        complianceBadge.className = 'text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 font-mono font-bold';
+      } else {
+        complianceBadge.innerText = 'NON-COMPLIANT';
+        complianceBadge.className = 'text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/40 font-mono font-bold';
+      }
+    }
+
+    // 2D CAD Overlay Projection Lines
+    function updateCADOverlay() {
+      if (!state.showDimensions) {
+        svgOverlay.innerHTML = '';
+        return;
+      }
+
+      const W = state.width;
+      const L = state.length;
+      const H = state.height;
+
+      const points = [
+        { start: new THREE.Vector3(-W / 2, 0.05, L / 2 + 0.25), end: new THREE.Vector3(W / 2, 0.05, L / 2 + 0.25), text: `W: ${W.toFixed(2)}m` },
+        { start: new THREE.Vector3(W / 2 + 0.25, 0.05, -L / 2), end: new THREE.Vector3(W / 2 + 0.25, 0.05, L / 2), text: `L: ${L.toFixed(2)}m` },
+        { start: new THREE.Vector3(-W / 2 - 0.25, 0, L / 2), end: new THREE.Vector3(-W / 2 - 0.25, H, L / 2), text: `H: ${H.toFixed(2)}m` }
+      ];
+
+      let svgContent = '';
+
+      points.forEach(pt => {
+        const p1 = projectToScreen(pt.start);
+        const p2 = projectToScreen(pt.end);
+
+        if (p1.z < 1 && p2.z < 1) {
+          const midX = (p1.x + p2.x) / 2;
+          const midY = (p1.y + p2.y) / 2;
+
+          let badgeBg = '#090d16';
+          if (state.themeMode === 'light') badgeBg = '#ffffff';
+          if (state.themeMode === 'grey') badgeBg = '#2d3748';
+          if (state.themeMode === 'yellow') badgeBg = '#fefce8';
+
+          svgContent += `
+            <g class="cad-dim-group">
+              <line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 2" />
+              <circle cx="${p1.x}" cy="${p1.y}" r="3.5" fill="#10b981" />
+              <circle cx="${p2.x}" cy="${p2.y}" r="3.5" fill="#10b981" />
+              <rect x="${midX - 36}" y="${midY - 11}" width="72" height="22" rx="5" fill="${badgeBg}" stroke="#10b981" stroke-width="1.2" />
+              <text x="${midX}" y="${midY + 4}" text-anchor="middle" fill="#10b981" font-size="11" font-family="JetBrains Mono" font-weight="700">${pt.text}</text>
+            </g>
+          `;
+        }
+      });
+
+      svgOverlay.innerHTML = svgContent;
+    }
+
+    function projectToScreen(vector) {
+      const vec = vector.clone();
+      vec.project(camera);
+      return {
+        x: (vec.x * 0.5 + 0.5) * window.innerWidth,
+        y: -(vec.y * 0.5 - 0.5) * window.innerHeight,
+        z: vec.z
+      };
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      updateCADOverlay();
+    }
+
+    // Left Panel UI Action Listeners
+    function setupUIEventListeners() {
+      const btnRotate = document.getElementById('btn-rotate-360');
+      btnRotate.addEventListener('click', () => {
+        state.autoRotate = !state.autoRotate;
+        controls.autoRotate = state.autoRotate;
+        controls.autoRotateSpeed = 2.5;
+        btnRotate.classList.toggle('bg-emerald-500/20', state.autoRotate);
+        btnRotate.classList.toggle('text-emerald-400', state.autoRotate);
+        btnRotate.classList.toggle('border-emerald-500/40', state.autoRotate);
+      });
+
+      const btnWireframe = document.getElementById('btn-wireframe');
+      btnWireframe.addEventListener('click', () => {
+        state.wireframe = !state.wireframe;
+        btnWireframe.classList.toggle('bg-emerald-500/20', state.wireframe);
+        btnWireframe.classList.toggle('text-emerald-400', state.wireframe);
+        btnWireframe.classList.toggle('border-emerald-500/40', state.wireframe);
+        updateMaterialProperties();
+      });
+
+      const btnDimensions = document.getElementById('btn-dimensions');
+      btnDimensions.addEventListener('click', () => {
+        state.showDimensions = !state.showDimensions;
+        btnDimensions.classList.toggle('bg-emerald-500/20', state.showDimensions);
+        btnDimensions.classList.toggle('text-emerald-400', state.showDimensions);
+        btnDimensions.classList.toggle('border-emerald-500/40', state.showDimensions);
+        updateCADOverlay();
+      });
+
+      // 4-Way Theme Cycle Toggle: Dark Mode -> Grey Mode -> Light Pastel Yellow -> Light Mode -> Dark Mode
+      const btnTheme = document.getElementById('btn-theme');
+      btnTheme.addEventListener('click', () => {
+        const themeIcon = document.getElementById('theme-icon');
+        const themeText = document.getElementById('theme-text');
+        const controlPanel = document.getElementById('control-panel');
+        const postDetailPanel = document.getElementById('post-detail-panel');
+        const hudPanel = document.getElementById('hud-panel');
+
+        if (state.themeMode === 'dark') {
+          state.themeMode = 'grey';
+          scene.background.setHex(0x374151); // Neutral Slate Grey
+          scene.fog.color.setHex(0x374151);
+          gridHelper.geometry.dispose();
+          scene.remove(gridHelper);
+          gridHelper = new THREE.GridHelper(20, 20, 0x10b981, 0x6b7280);
+          scene.add(gridHelper);
+
+          themeIcon.className = 'fa-solid fa-circle text-emerald-400';
+          themeText.innerText = 'Grey Mode';
+
+          controlPanel.className = controlPanel.className.replace(/glass-panel-(light|yellow)?/, 'glass-panel-grey').replace('text-slate-800', 'text-slate-100');
+          postDetailPanel.className = postDetailPanel.className.replace(/glass-panel-(light|yellow)?/, 'glass-panel-grey').replace('text-slate-800', 'text-slate-100');
+          hudPanel.className = hudPanel.className.replace(/glass-panel-(light|yellow)?/, 'glass-panel-grey').replace('text-slate-800', 'text-slate-100');
+
+        } else if (state.themeMode === 'grey') {
+          state.themeMode = 'yellow';
+          scene.background.setHex(0xfef08a); // Light Pastel Yellow (#fef08a)
+          scene.fog.color.setHex(0xfef08a);
+          gridHelper.geometry.dispose();
+          scene.remove(gridHelper);
+          gridHelper = new THREE.GridHelper(20, 20, 0xd97706, 0xca8a04);
+          scene.add(gridHelper);
+
+          themeIcon.className = 'fa-solid fa-sun text-amber-500';
+          themeText.innerText = 'Pastel Yellow';
+
+          controlPanel.className = controlPanel.className.replace('glass-panel-grey', 'glass-panel-yellow').replace('text-slate-100', 'text-slate-800');
+          postDetailPanel.className = postDetailPanel.className.replace('glass-panel-grey', 'glass-panel-yellow').replace('text-slate-100', 'text-slate-800');
+          hudPanel.className = hudPanel.className.replace('glass-panel-grey', 'glass-panel-yellow').replace('text-slate-100', 'text-slate-800');
+
+        } else if (state.themeMode === 'yellow') {
+          state.themeMode = 'light';
+          scene.background.setHex(0xf8fafc);
+          scene.fog.color.setHex(0xf8fafc);
+          gridHelper.geometry.dispose();
+          scene.remove(gridHelper);
+          gridHelper = new THREE.GridHelper(20, 20, 0x059669, 0xcb2d3e);
+          scene.add(gridHelper);
+
+          themeIcon.className = 'fa-solid fa-sun text-emerald-400';
+          themeText.innerText = 'Light Mode';
+
+          controlPanel.className = controlPanel.className.replace('glass-panel-yellow', 'glass-panel-light');
+          postDetailPanel.className = postDetailPanel.className.replace('glass-panel-yellow', 'glass-panel-light');
+          hudPanel.className = hudPanel.className.replace('glass-panel-yellow', 'glass-panel-light');
+
+        } else {
+          state.themeMode = 'dark';
+          scene.background.setHex(0x090d16);
+          scene.fog.color.setHex(0x090d16);
+          gridHelper.geometry.dispose();
+          scene.remove(gridHelper);
+          gridHelper = new THREE.GridHelper(20, 20, 0x10b981, 0x1e293b);
+          scene.add(gridHelper);
+
+          themeIcon.className = 'fa-solid fa-moon text-emerald-400';
+          themeText.innerText = 'Dark Mode';
+
+          controlPanel.className = controlPanel.className.replace('glass-panel-light', 'glass-panel').replace('text-slate-800', 'text-slate-100');
+          postDetailPanel.className = postDetailPanel.className.replace('glass-panel-light', 'glass-panel').replace('text-slate-800', 'text-slate-100');
+          hudPanel.className = hudPanel.className.replace('glass-panel-light', 'glass-panel').replace('text-slate-800', 'text-slate-100');
+        }
+        updateCADOverlay();
+      });
+
+      // UK Terrain Selection Dropdown
+      const selectUKTerrain = document.getElementById('select-uk-terrain');
+      selectUKTerrain.addEventListener('change', (e) => {
+        state.ukTerrain = e.target.value;
+        rebuildPergola();
+      });
+
+      // Post Profile Cross Section Selector
+      const selectPostSize = document.getElementById('select-post-size');
+      selectPostSize.addEventListener('change', (e) => {
+        state.postProfileSize = parseFloat(e.target.value);
+        rebuildPergola();
+      });
+
+      // Sliders listeners
+      document.getElementById('slider-length').addEventListener('input', (e) => {
+        state.length = parseFloat(e.target.value);
+        document.getElementById('val-length').innerText = `${state.length.toFixed(2)} m`;
+        rebuildPergola();
+      });
+
+      document.getElementById('slider-width').addEventListener('input', (e) => {
+        state.width = parseFloat(e.target.value);
+        document.getElementById('val-width').innerText = `${state.width.toFixed(2)} m`;
+        rebuildPergola();
+      });
+
+      document.getElementById('slider-height').addEventListener('input', (e) => {
+        state.height = parseFloat(e.target.value);
+        document.getElementById('val-height').innerText = `${state.height.toFixed(2)} m`;
+        controls.target.set(0, state.height / 2, 0);
+        rebuildPergola();
+      });
+
+      document.getElementById('slider-thickness').addEventListener('input', (e) => {
+        state.postThickness = parseFloat(e.target.value);
+        document.getElementById('val-thickness').innerText = `${state.postThickness.toFixed(1)} mm`;
+        rebuildPergola();
+      });
+
+      const sliderLouver = document.getElementById('slider-louver');
+      sliderLouver.addEventListener('input', (e) => {
+        state.louverAngle = parseInt(e.target.value);
+        document.getElementById('val-louver-angle').innerText = `${state.louverAngle}° ${state.louverAngle === 0 ? '(Closed)' : state.louverAngle === 90 ? '(Open)' : ''}`;
+        rebuildPergola();
+      });
+
+      // Louver Presets
+      document.getElementById('btn-louver-close').addEventListener('click', () => {
+        sliderLouver.value = 0;
+        sliderLouver.dispatchEvent(new Event('input'));
+      });
+      document.getElementById('btn-louver-45').addEventListener('click', () => {
+        sliderLouver.value = 45;
+        sliderLouver.dispatchEvent(new Event('input'));
+      });
+      document.getElementById('btn-louver-open').addEventListener('click', () => {
+        sliderLouver.value = 90;
+        sliderLouver.dispatchEvent(new Event('input'));
+      });
+
+      // Color Options Buttons
+      const colorBtns = document.querySelectorAll('.color-btn');
+      colorBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          colorBtns.forEach(b => b.classList.remove('ring-2', 'ring-emerald-400'));
+          btn.classList.add('ring-2', 'ring-emerald-400');
+
+          state.color = parseInt(btn.getAttribute('data-color'));
+          state.colorName = btn.getAttribute('data-name');
+          document.getElementById('color-name-display').innerText = state.colorName;
+
+          updateMaterialProperties();
+        });
+      });
+    }
+
+    // Render Animation Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+      updateCADOverlay();
+    }
+
+    // Run application on load
+    window.onload = init;
+  </script>
+</body>
+</html>
